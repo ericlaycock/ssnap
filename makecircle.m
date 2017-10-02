@@ -14,5 +14,6 @@ else
     [xx,yy] = ndgrid((1:imageSize(1))-ci(1),(1:imageSize(2))-ci(2));
     mask = (xx.^2 + yy.^2)<ci(3)^2;
     mat = mask .* mat;   
+    mat(mat==0)=0.5;
 end
 

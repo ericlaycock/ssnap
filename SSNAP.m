@@ -15,6 +15,7 @@
 sca;
 close all;
 clearvars;
+
 % Here we call some default settings for setting up Psychtoolbox
 PsychDefaultSetup(2);
 
@@ -45,7 +46,7 @@ if exist(outputname)==2 % check to avoid overiding an existing file
     end
 end
 
-foldername = strcat('C:\Users\MCLabAdmin\Documents\MATLAB\SSNAP Coding\', output, gender, subid, group, subage);
+foldername = strcat('C:\Users\MCLabAdmin\Documents\MATLAB\', output, gender, subid, group, subage);
 mkdir(foldername);
 
 %% Variables
@@ -83,10 +84,6 @@ lambda = spatwavelength_pixels; %lambda
 % noise variables
 gaborsigma = str2num(gaborsigma1);
 
-%Boundary variables
-
-
-
 %Timing, block and trial variables
 trialNumber = str2num(nTrials);
 
@@ -100,9 +97,11 @@ noisesigma = 0.1;
 %% Set window priorities, window coordinates, and define colours
 white = WhiteIndex(screenNumber);
 black = BlackIndex(screenNumber);
+%Miro:added gray
+gray = GrayIndex(screenNumber);
 
 % Open an on screen window
-[window, windowRect] = PsychImaging('OpenWindow', screenNumber, black); %PTB notices the command 'OpenWindow' and creates two things:
+[window, windowRect] = PsychImaging('OpenWindow', screenNumber, gray); %PTB notices the command 'OpenWindow' and creates two things:
 % a window ID "10" and the dimensions and location of the window [L T R B]
 % in pixels = [0 0 1920 1080]
 [xCenter, yCenter] = RectCenter(windowRect); %defines the point of origin(x,y) as the center of the window (rectangular)
@@ -115,105 +114,140 @@ ifi = Screen('GetFlipInterval', window); %interframe-interval
 
 
 %% Creates boundary for Gabor Stimulus
-BoundaryColor = [0 0 1];
+
+%Boundary variables
+LeftBoundaryColor = [1 0 0];
+RightBoundaryColor = [0 0 1];
 BoundaryThickness = 6; %six pixels thick
-BoundarybRect = [0 0 (pixels * 1.1) (pixels * 1.1)];
-% BoundarymaxDiameter = max(BoundarybRect) * 1.01; %sets the maxDiameter (makes it circular)
-BoundaryRect = CenterRectOnPointd(BoundarybRect, xCenter, yCenter); %set the center of the stimulus 
+
+%Boundaries location
+LeftBoundaryRect = [0 0 (pixels * 1.1) (pixels * 1.1)];
+LeftBoundarymaxDiameter = max(LeftBoundaryRect);%M:Changed from max(BoundarybRect*1.01) %sets the maxDiameter (makes it circular)R
+LeftBoundaryRect = CenterRectOnPointd(LeftBoundaryRect, xCenter - pixels, yCenter); %set the center of the stimulus 
 %diameter 4 degrees to the left of the centre of the fixation circle
 
-
+RightBoundaryRect = [0 0 (pixels * 1.1) (pixels * 1.1)];
+RightBoundarymaxDiameter = max(RightBoundaryRect);%M:Changed from max(BoundarybRect*1.01) %sets the maxDiameter (makes it circular)R
+RightBoundaryRect = CenterRectOnPointd(RightBoundaryRect, xCenter + pixels, yCenter); %set the center of the stimulus 
+%diameter 4 degrees to the left of the centre of the fixation circle
 
 %% INITIAL DATA SETUP
 data = {'ID', 'Trial_Number', 'Psi', 'Pixels', 'nOscillations', 'Theta', 'Noise Contrast', 'Gabor Contrast'};
 % Sync us and get a time stamp
-
+% vbl = Screen('Flip', window);
  
 %% Time variables
+% ==
 waitframes = 4;
+
+%Flip windows between trails
+%while 
+
+%Miro 0925 moved belows after making response
+% vbl = Screen('Flip',window);
+% ifi = Screen('GetFlipInterval', window);
+% numFrames = round(numSecs/ifi); %number of frames to be used during a single draw
+
+
+
+
+
+
+%     %%Miro: 0927 if there is no respond in 3s, then proceed to the next trail
+%     startTime = WaitSecs(0);
+%     KbWait([], 0, startTime+3);
+    
 vbl = Screen('Flip',window);
 ifi = Screen('GetFlipInterval', window);
 numFrames = round(numSecs/ifi); %number of frames to be used during a single draw
- 
+
 % Animation loop
 for frame = 1:trialNumber
-%% Draws stimuli to screen
+    %% Draws stimuli to screen
 
- %Makes the properties a matrix (can be inserted into cell array)
+    %Makes the properties a matrix (can be inserted into cell array)
     psi = rand * 2*pi; %defined locally 
       
 
 
-%% Creates noise matrix, 
-nMatrix = wgn(pixels, pixels, 0); %generates an m-by-n matrix of white Gaussian noise. p specifies the power of y in decibels relative to a watt. The default load impedance is 1 ohm. - power of y is the same as its variance
-c = max([abs(min(min(nMatrix))) max(max(nMatrix))]);
-nMatrix = nMatrix ./ c; %restricts N to [-1,1]
-smoothingdimension_vad = str2num(smoothingdimension1);
-smoothingdimension_pixel = round((2*distancefromscreen)*atan((smoothingdimension_vad/(180/pi)/2)) * cmtopixel); %converts visual angle to pixel
-if mod(smoothingdimension_pixel,2) == 0
+    %% Creates noise matrix, 
+    nMatrix = wgn(pixels, pixels, 0); %generates an m-by-n matrix of white Gaussian noise. p specifies the power of y in decibels relative to a watt. The default load impedance is 1 ohm. - power of y is the same as its variance
+    c = max([abs(min(min(nMatrix))) max(max(nMatrix))]);
+    nMatrix = nMatrix ./ c; %restricts N to [-1,1]
+    smoothingdimension_vad = str2num(smoothingdimension1);
+    smoothingdimension_pixel = round((2*distancefromscreen)*atan((smoothingdimension_vad/(180/pi)/2)) * cmtopixel); %converts visual angle to pixel
+    if mod(smoothingdimension_pixel,2) == 0
     smoothingdimension_pixel = smoothingdimension_pixel + 1; %smoothing dimension must be odd to ensure a center  element
-end
+    end
 
 
-nMatrix = imgaussfilt(nMatrix, noisesigma, 'FilterSize', smoothingdimension_pixel);
+    nMatrix = imgaussfilt(nMatrix, noisesigma, 'FilterSize', smoothingdimension_pixel);
 
+    % noisetex = Screen('MakeTexture', window, makecircle(nMatrix)); %builds a texture from the noise matrix
 
-% noisetex = Screen('MakeTexture', window, makecircle(nMatrix)); %builds a texture from the noise matrix
+    %% Creates a Gabor matrix, uses that to build a stimulus in center field
+    nOscillations = 8;
 
-%% Creates a Gabor matrix, uses that to build a stimulus in center field
-nOscillations = 8;
-
-if rand > 0.5
+    if rand > 0.5
     theta = 90;
-else
-    theta = 0;
-end
-%theta = 90;
+    else
+        theta = 0;
+    end
 
-n = dwntrast(nMatrix, noisesigma);
+    n = dwntrast(nMatrix, noisesigma);
 
-g = dwntrast((sinwav(pixels,nOscillations,theta,psi) / 2),gaborsigma);
+    g = dwntrast((sinwav(pixels,nOscillations,theta,psi) / 2),gaborsigma);
+    non_normal_dirtysig = n - mean(n(:)) + g - mean(g(:));
+    s = non_normal_dirtysig + 0.5;
 
-non_normal_dirtysig = n - mean(n(:)) + g - mean(g(:));
-s = non_normal_dirtysig + 0.5;
-
-%% Build texture
-backgroundOffset = [0.5 0.5 0.5 0.0]; %RGBA values - all zeroes is black
-disableNorm = 1; %%??
-preContrastMultiplier = 200; %%???
-%gabortex = Screen('MakeTexture', window, g); %uses this matrix to build a texture
-%propertiesMat = [psi*180, spatfreq_pixels, sigma, contrast, gamma, 0, 0, 0];
+    %% Build texture
+    backgroundOffset = [0.5 0.5 0.5 0.0]; %RGBA values - all zeroes is black
+    disableNorm = 1; %%??
+    preContrastMultiplier = 200; %%???
+    %gabortex = Screen('MakeTexture', window, g); %uses this matrix to build a texture
+    %propertiesMat = [psi*180, spatfreq_pixels, sigma, contrast, gamma, 0, 0, 0];
 
 
-%% Creates a noisy-signal matrix - noise and signal are added together
+    %% Creates a noisy-signal matrix - noise and signal are added together
+    % Miro:settled the screen location
+    specialtex1 = Screen('MakeTexture', window, makecircle(s)); %builds the actual texture we want to present
+    specialtex2 = Screen('MakeTexture', window, makecircle(s)); %builds the actual texture we want to present
 
-specialtex1 = Screen('MakeTexture', window, makecircle(s)); %builds the actual texture we want to present
-
-
-%% Draws to screen for a given frame
+    %% Draws to screen for a given frame
     
-    %Screen('DrawTexture', window, gabortex, [], [], theta, [], [], [], [],...
-    % kPsychDontDoRotation, propertiesMat'); %draws only Gabor - only change per draw should be phase
-   %Screen('DrawTexture', window, noisetex, [], [], theta, [], [], [], [],...
-    % kPsychDontDoRotation, propertiesMat'); %draws white noise 
-   
-    Screen('DrawTexture', window, specialtex1);
-    Screen('FrameOval', window, BoundaryColor, BoundaryRect, BoundaryThickness); %draws frame, frame should not change
+    %Textures location
+    LeftTextureRect = [0 0 (pixels * 1.1) (pixels * 1.1)];
+    LeftTextureRect = CenterRectOnPointd(LeftTextureRect, xCenter - pixels, yCenter); %set the center of the stimulus 
+    %diameter 4 degrees to the left of the centre of the fixation circle
+    
 
-%% Saves the frame-by-frame data ("local data") to an aggregate data file ("data") for later output
+    RightTextureRect = [0 0 (pixels * 1.1) (pixels * 1.1)];
+    RightTextureRect = CenterRectOnPointd(RightTextureRect, xCenter + pixels, yCenter); %set the center of the stimulus 
+    
+    %Draw the specialtexts
+    Screen('DrawTextures', window, specialtex1, [], LeftTextureRect);
+    Screen('DrawTextures', window, specialtex2, [], RightTextureRect);
+    
+    
+   %Draw the boundaries
+    Screen('FrameOval', window, LeftBoundaryColor, LeftBoundaryRect, BoundaryThickness); %draws frame, frame should not change
+    Screen('FrameOval', window, RightBoundaryColor, RightBoundaryRect, BoundaryThickness); %draws frame, frame should not change
+    %% Saves the dirty signal matrix to be later processed for signal energy
+
+    %% Saves the frame-by-frame data ("local data") to an aggregate data file ("data") for later output
     
 
     localdata = {outputname, trialNumber - 5, psi, pixels, nOscillations, theta, noisesigma, gaborsigma};
     data = [data; localdata];
     vbl = Screen('Flip', window, vbl + (waitframes) * ifi); %
     trialNumber = trialNumber + 1;  
-    matrixcount = matrixcount + 1;  
+    matrixcount = matrixcount + 1;
     %for every new draw, redefine this variable
     
     cd(foldername)
     matrixname = strcat('non_normal_dirtysig', num2str(matrixcount), '.mat');
     save(matrixname,'non_normal_dirtysig', '-v7.3')
-    cd('C:\Users\MCLabAdmin\Documents\MATLAB\SSNAP Coding')
+    cd('C:\Users\MCLabAdmin\Documents\MATLAB')
 
 end
 %% Uploads data to Output file
@@ -221,10 +255,9 @@ end
 
 cd(foldername)
 xlswrite(outputname,data);
-cd('C:\Users\MCLabAdmin\Documents\MATLAB\SSNAP Coding')
+cd('C:\Users\MCLabAdmin\Documents\MATLAB')
 %% Termination sequence
 % Wait for a key press
-KbStrokeWait;
+KbStrokeWait;s;
 % Clear the screen
 sca;
-
