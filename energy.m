@@ -5,7 +5,7 @@
 % Wmx is an energy map of maximum energy values per theta/lambda
 % Wig is an energy map of the (summed) integration value per theta/lambda
 
-pixels = 51;
+pixels = 80;
 nOscillations = 8;
 theta = 90;
 pShift = 0;
@@ -21,6 +21,13 @@ randsig = 2 * rand(pixels) - 1;
 probe1 = sinwav(pixels,nOscillations,theta,pShift);
 probe2 = (probe1 + randsig)/2;
 
+padsize = 2^nextpow2(pixels) - pixels
+
+
+randsig = padarray(padarray(randsig, padsize, 'post')', padsize,'post');
+probe1 = padarray(padarray(probe1, padsize, 'post')', padsize,'post');
+probe2 = padarray(padarray(probe2, padsize, 'post')', padsize,'post');
+tic
 %% The problem: 
 for i=1:pixels
     for j=1:pixels
@@ -32,8 +39,8 @@ for i=1:pixels
         
         std = sinwav(pixels,xirange(j)*4,thetarange(i),pShift);
         
-        crr1 = (sqrt( (xcorr2(probe1,cos(std))).^2 + (xcorr2(probe1,sin(std))).^2 ));
-        crr2 = (sqrt( (xcorr2(probe2,cos(std))).^2 + (xcorr2(probe2,sin(std))).^2 ));
+        crr1 = (sqrt( (xcorr2_fft(probe1,cos(std))).^2 + (xcorr2_fft(probe1,sin(std))).^2 ));
+        crr2 = (sqrt( (xcorr2_fft(probe2,cos(std))).^2 + (xcorr2_fft(probe2,sin(std))).^2 ));
         
         
         ig1 = integr(crr1);
@@ -44,7 +51,7 @@ for i=1:pixels
     end
     i
 end
-
+toc
 
 
 [ssr1,snd1] = max(crr1(:));
